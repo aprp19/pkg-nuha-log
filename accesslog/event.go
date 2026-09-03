@@ -30,7 +30,8 @@ type AccessLogEvent struct {
 	Transport     string                 `json:"transport,omitempty"`
 	RequestCode   string                 `json:"request_code,omitempty"`
 	StatusCode    int                    `json:"status_code"`
-	DurationMs    int64                  `json:"duration_ms"`
+	DurationMs    *int64                 `json:"duration_ms,omitempty"`
+	DurationUs    *int64                 `json:"duration_us,omitempty"`
 	RequestParams map[string]interface{} `json:"request_params,omitempty"`
 	ResponseBody  interface{}            `json:"response_body,omitempty"`
 	Actor         Actor                  `json:"actor,omitempty"`

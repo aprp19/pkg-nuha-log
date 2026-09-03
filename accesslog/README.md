@@ -165,7 +165,8 @@ Override with `ClientConfig.SkipMethods`.
 | `transport` | `"http"` or `"grpc"` |
 | `request_code` | gRPC dispatch code when present |
 | `status_code` | Response status |
-| `duration_ms` | Handler wall-clock time |
+| `duration_us` | Handler wall-clock time when under 1ms (microseconds) |
+| `duration_ms` | Handler wall-clock time when 1ms or longer (milliseconds) |
 | `request_params` | Sanitized query + body |
 | `response_body` | Sanitized JSON response (max 64KB) |
 | `actor` | User context from Echo + response enrichment |

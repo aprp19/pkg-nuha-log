@@ -37,12 +37,12 @@ func (c *Client) UnaryServerInterceptor(module string) grpc.UnaryServerIntercept
 			Transport:     TransportGRPC,
 			RequestCode:   requestCode,
 			StatusCode:    grpcStatusCode(err),
-			DurationMs:    time.Since(start).Milliseconds(),
 			RequestParams: buildGRPCRequestParams(ctx, req, c.maxResponseBytes),
 			ResponseBody:  protoToSanitizedValue(resp, c.maxResponseBytes),
 			ErrorMessage:  grpcErrorMessage(err),
 			Timestamp:     time.Now().UTC().Format(time.RFC3339),
 		}
+		setDurationFromStart(&event, start)
 
 		actor := captureActorFromGRPCContext(ctx, c)
 		if err == nil {

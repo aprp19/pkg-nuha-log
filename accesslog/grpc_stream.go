@@ -125,12 +125,12 @@ func (c *Client) StreamServerInterceptor(module string) grpc.StreamServerInterce
 			Route:         info.FullMethod,
 			Transport:     TransportGRPC,
 			StatusCode:    grpcStatusCode(err),
-			DurationMs:    time.Since(start).Milliseconds(),
 			RequestParams: buildStreamRequestParams(capture, c.maxResponseBytes),
 			ResponseBody:  protoToSanitizedValue(capture.response, c.maxResponseBytes),
 			ErrorMessage:  grpcErrorMessage(err),
 			Timestamp:     time.Now().UTC().Format(time.RFC3339),
 		}
+		setDurationFromStart(&event, start)
 
 		actor := captureActorFromGRPCContext(ss.Context(), c)
 		if err == nil {

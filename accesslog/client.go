@@ -112,12 +112,12 @@ func (c *Client) Wrap(module string, h echo.HandlerFunc) echo.HandlerFunc {
 			Route:         ctx.Path(),
 			Transport:     TransportHTTP,
 			StatusCode:    statusCodeFromContext(ctx, handlerErr),
-			DurationMs:    time.Since(start).Milliseconds(),
 			RequestParams: buildRequestParams(ctx),
 			ResponseBody:  buf.Body(c.maxResponseBytes),
 			ErrorMessage:  errorMessage(handlerErr),
 			Timestamp:     time.Now().UTC().Format(time.RFC3339),
 		}
+		setDurationFromStart(&event, start)
 
 		actor := captureActorFromRequest(ctx)
 		if handlerErr == nil {
