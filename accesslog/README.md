@@ -178,20 +178,21 @@ On failed requests (`status_code >= 400` or handler returned an error), the even
 
 | Field | Source |
 |-------|--------|
-| `message` | Human-readable failure reason (handler opt-in via `SetErrorMessage` / `LogError`) |
+| `message` | Auto-captured from `logger.Error().Msg()` (v0.2.1+) or explicit `SetErrorMessage` / `LogError` |
 | `cause` | Underlying returned error (`err.Error()` or gRPC status message) |
-| `context` | Structured fields from handler opt-in (`SetErrorContext` / `LogError` Str pairs) |
+| `context` | Auto-captured from `logger.Error().Str()` fields (v0.2.1+) or explicit `SetErrorContext` / `LogError` |
 | `response` | JSON error payload sent to the client (buffered body, `SetErrorResponse`, or `echo.HTTPError` map message) |
 
-Zerolog `.Msg()` and `.Str()` are **not** auto-captured. Use `LogError` or the explicit setters so the access log matches your terminal output.
+Import **`github.com/aprp19/pkg-nuha-log/logger`** (not raw `zerolog`) so Error logs inside a request are auto-captured by the accesslog interceptor/wrapper.
 
-**Recommended handler pattern:**
+**Recommended handler pattern (no return wrapping):**
 
 ```go
-accesslog.LogError(c, err, "merge document file fetch failed",
-    "nik_pegawai", request.NIK,
-    "document_path", path,
-)
+logger.Error().
+    Str("nik_pegawai", request.NIK).
+    Str("document_path", path).
+    Err(err).
+    Msg("merge document file fetch failed")
 return err
 ```
 
@@ -349,7 +350,7 @@ protected.GET("/users/:id", wrap(ctrl.GetByID))  // wrap at route level
 | `failed to send activity log` | Network error or hub-ingestion-service down — check service logs |
 | Missing request body | Body must be readable; client caches body before handler runs |
 | Missing actor fields | Auth middleware must set Echo context keys before handler |
-| Missing error message in access log | Zerolog `.Msg()` is not auto-captured — use `LogError` or `SetErrorMessage` |
+| Missing error message in access log | Use `github.com/aprp19/pkg-nuha-log/logger` (not raw zerolog) and ensure accesslog interceptor/wrapper is registered |
 | Missing 500 response JSON in access log | Echo HTTPErrorHandler may run after wrapper — use `SetErrorResponse` or write JSON before returning |
 
 ## API reference

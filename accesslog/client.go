@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aprp19/pkg-nuha-log/internal/activityctx"
 	"github.com/labstack/echo/v4"
 )
 
@@ -100,6 +101,11 @@ func (c *Client) Wrap(module string, h echo.HandlerFunc) echo.HandlerFunc {
 
 		buf := newResponseBuffer(ctx.Response().Writer, c.maxResponseBytes)
 		ctx.Response().Writer = buf
+
+		reqCtx := activityctx.WithErrorBag(ctx.Request().Context())
+		ctx.SetRequest(ctx.Request().WithContext(reqCtx))
+		activityctx.Enter(reqCtx)
+		defer activityctx.Leave()
 
 		handlerErr := h(ctx)
 

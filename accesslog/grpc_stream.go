@@ -3,6 +3,7 @@ package accesslog
 import (
 	"time"
 
+	"github.com/aprp19/pkg-nuha-log/internal/activityctx"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 )
@@ -114,6 +115,10 @@ func (c *Client) StreamServerInterceptor(module string) grpc.StreamServerInterce
 			capture:      capture,
 		}
 
+		streamCtx := activityctx.WithErrorBag(ss.Context())
+		activityctx.Enter(streamCtx)
+		defer activityctx.Leave()
+
 		err := handler(srv, wrapped)
 
 		statusCode := grpcStatusCode(err)
@@ -130,7 +135,7 @@ func (c *Client) StreamServerInterceptor(module string) grpc.StreamServerInterce
 			StatusCode:    statusCode,
 			RequestParams: buildStreamRequestParams(capture, c.maxResponseBytes),
 			ResponseBody:  responseBodyIfSuccess(err, statusCode, responseBody),
-			Error:         buildErrorFromGRPCContext(ss.Context(), err, responseBody, statusCode),
+			Error:         buildErrorFromGRPCContext(streamCtx, err, responseBody, statusCode),
 			Timestamp:     time.Now().UTC().Format(time.RFC3339),
 		}
 		setDurationFromStart(&event, start)

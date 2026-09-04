@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/aprp19/pkg-nuha-log/internal/activityctx"
 	"google.golang.org/grpc"
 )
 
@@ -20,6 +21,10 @@ func (c *Client) UnaryServerInterceptor(module string) grpc.UnaryServerIntercept
 		}
 
 		start := time.Now()
+		ctx = activityctx.WithErrorBag(ctx)
+		activityctx.Enter(ctx)
+		defer activityctx.Leave()
+
 		resp, err := handler(ctx, req)
 
 		requestCode := ""

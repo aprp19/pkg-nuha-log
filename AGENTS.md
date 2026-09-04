@@ -113,19 +113,20 @@ Sensitive keys redacted: `password`, `token`, `access_token`, `refresh_token`, `
 
 Failed requests emit a nested `error` object with `message`, `cause`, `context`, and `response` instead of flat `error_message`. Success responses still use top-level `response_body`.
 
-Zerolog `.Msg()` / `.Str()` are not auto-captured. In handlers:
+**Auto-capture (v0.2.1+):** use `github.com/aprp19/pkg-nuha-log/logger` — existing `logger.Error().Str(...).Msg(...)` before `return err` fills `error.message` and `error.context` automatically when the accesslog interceptor/wrapper is registered. No per-return helpers required.
 
 ```go
-accesslog.LogError(c, err, "merge document file fetch failed",
-    "nik_pegawai", request.NIK,
-    "document_path", path,
-)
+logger.Error().
+    Str("nik_pegawai", request.NIK).
+    Str("document_path", path).
+    Err(err).
+    Msg("merge document file fetch failed")
 return err
 ```
 
-When Echo's global HTTPErrorHandler formats 500 JSON outside the wrapper, call `accesslog.SetErrorResponse(c, payload)` from the error handler.
+Explicit opt-in still works: `accesslog.LogError`, `SetErrorMessage`, `SetErrorResponse` (HTTP), `SetErrorMessageContext` (gRPC).
 
-gRPC: use `SetErrorMessageContext` / `SetErrorContextContext` on the request context.
+When Echo's global HTTPErrorHandler formats 500 JSON outside the wrapper, call `accesslog.SetErrorResponse(c, payload)` from the error handler.
 
 **Migration from v0.1.x:** `error_message` → `error.cause` / `error.message`; error JSON → `error.response`.
 

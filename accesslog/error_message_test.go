@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/aprp19/pkg-nuha-log/internal/activityctx"
+	"github.com/aprp19/pkg-nuha-log/logger"
 	"github.com/labstack/echo/v4"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -140,6 +142,33 @@ func TestBuildError_successReturnsNil(t *testing.T) {
 
 	if accessErr := buildError(c, nil, map[string]interface{}{"ok": true}, http.StatusOK); accessErr != nil {
 		t.Fatalf("expected nil error object, got %#v", accessErr)
+	}
+}
+
+func TestBuildErrorFromGRPCContext_autoCapturedLogger(t *testing.T) {
+	ctx := activityctx.WithErrorBag(context.Background())
+	activityctx.Enter(ctx)
+	defer activityctx.Leave()
+
+	logger.Error().
+		Str("nik_pegawai", "P-2024-01").
+		Str("document_path", "/asset/file/doc.pdf").
+		Msg("merge document file fetch failed")
+
+	err := status.Error(codes.Internal, "failed to stat file: The specified key does not exist.")
+
+	accessErr := buildErrorFromGRPCContext(ctx, err, nil, http.StatusInternalServerError)
+	if accessErr == nil {
+		t.Fatal("expected error object")
+	}
+	if accessErr.Message != "merge document file fetch failed" {
+		t.Fatalf("message = %q", accessErr.Message)
+	}
+	if accessErr.Cause != "failed to stat file: The specified key does not exist." {
+		t.Fatalf("cause = %q", accessErr.Cause)
+	}
+	if accessErr.Context["nik_pegawai"] != "P-2024-01" {
+		t.Fatalf("context = %#v", accessErr.Context)
 	}
 }
 

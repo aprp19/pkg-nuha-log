@@ -3,6 +3,7 @@ package accesslog
 import (
 	"context"
 
+	"github.com/aprp19/pkg-nuha-log/internal/activityctx"
 	"github.com/aprp19/pkg-nuha-log/logger"
 	"github.com/labstack/echo/v4"
 	"google.golang.org/grpc/status"
@@ -23,14 +24,26 @@ const (
 
 // SetErrorMessage stores a human-readable failure reason for the access log event.
 func SetErrorMessage(c echo.Context, msg string) {
-	if msg != "" {
-		c.Set(accessLogErrorMessageKey, msg)
+	if msg == "" {
+		return
 	}
+	if bag, ok := activityctx.BagFromContext(c.Request().Context()); ok {
+		bag.Message = msg
+		return
+	}
+	c.Set(accessLogErrorMessageKey, msg)
 }
 
 // SetErrorContext stores one structured error context field for the access log event.
 func SetErrorContext(c echo.Context, key string, value interface{}) {
 	if key == "" {
+		return
+	}
+	if bag, ok := activityctx.BagFromContext(c.Request().Context()); ok {
+		if bag.Context == nil {
+			bag.Context = make(map[string]interface{})
+		}
+		bag.Context[key] = value
 		return
 	}
 	existing, _ := c.Get(accessLogErrorContextKey).(map[string]interface{})
@@ -53,12 +66,24 @@ func SetErrorMessageContext(ctx context.Context, msg string) context.Context {
 	if msg == "" {
 		return ctx
 	}
+	if bag, ok := activityctx.BagFromContext(ctx); ok {
+		bag.Message = msg
+		return ctx
+	}
 	return context.WithValue(ctx, grpcErrorMessageKey, msg)
 }
 
 // SetErrorContextContext stores one structured error context field on a gRPC context.
 func SetErrorContextContext(ctx context.Context, key string, value interface{}) context.Context {
 	if key == "" {
+		return ctx
+	}
+
+	if bag, ok := activityctx.BagFromContext(ctx); ok {
+		if bag.Context == nil {
+			bag.Context = make(map[string]interface{})
+		}
+		bag.Context[key] = value
 		return ctx
 	}
 
@@ -100,8 +125,8 @@ func buildError(c echo.Context, err error, responseBody interface{}, statusCode 
 		return nil
 	}
 	return assembleAccessLogError(
-		errorMessageFromEcho(c),
-		errorContextFromEcho(c),
+		resolveErrorMessage(errorMessageFromEcho(c), c.Request().Context()),
+		resolveErrorContext(errorContextFromEcho(c), c.Request().Context()),
 		underlyingErrorCause(err),
 		errorResponseFromSources(c, err, responseBody),
 	)
@@ -118,11 +143,38 @@ func buildErrorFromGRPCContext(ctx context.Context, err error, responseBody inte
 	}
 
 	return assembleAccessLogError(
-		errorMessageFromGRPCContext(ctx),
-		errorContextFromGRPCContext(ctx),
+		resolveErrorMessage(errorMessageFromGRPCContext(ctx), ctx),
+		resolveErrorContext(errorContextFromGRPCContext(ctx), ctx),
 		grpcUnderlyingCause(err),
 		response,
 	)
+}
+
+func resolveErrorMessage(explicit string, ctx context.Context) string {
+	if explicit != "" {
+		return explicit
+	}
+	if bag, ok := activityctx.BagFromContext(ctx); ok {
+		return bag.Message
+	}
+	return ""
+}
+
+func resolveErrorContext(explicit map[string]interface{}, ctx context.Context) map[string]interface{} {
+	bag, ok := activityctx.BagFromContext(ctx)
+	if !ok || len(bag.Context) == 0 {
+		return explicit
+	}
+
+	merged := sanitizeObject(bag.Context)
+	if len(explicit) == 0 {
+		return merged
+	}
+
+	for key, value := range explicit {
+		merged[key] = value
+	}
+	return merged
 }
 
 func assembleAccessLogError(message string, ctxMap map[string]interface{}, cause string, response interface{}) *AccessLogError {

@@ -20,10 +20,10 @@ func Init() {
 	})
 }
 
-// Export log biar gampang dipakai di seluruh project
+// Export log biar gampang dipakai di seluruh project.
+// Error() auto-captures Msg + Str fields into the active access log request scope.
 var (
 	Info  = log.Info
-	Error = log.Error
 	Warn  = log.Warn
 	Debug = log.Debug
 	Fatal = log.Fatal
