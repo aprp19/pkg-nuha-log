@@ -22,6 +22,7 @@ func (c *Client) UnaryServerInterceptor(module string) grpc.UnaryServerIntercept
 
 		start := time.Now()
 		ctx = activityctx.WithErrorBag(ctx)
+		ctx = attachTraceContext(ctx, incomingTraceparentFromGRPC(ctx))
 		activityctx.Enter(ctx)
 		defer activityctx.Leave()
 
@@ -57,6 +58,7 @@ func (c *Client) UnaryServerInterceptor(module string) grpc.UnaryServerIntercept
 			actor = enrichActorFromResponse(actor, event.ResponseBody)
 		}
 		event.Actor = actor
+		applyTraceFields(&event, traceFieldsFromContext(ctx))
 
 		c.sendAsync(event)
 		return resp, err

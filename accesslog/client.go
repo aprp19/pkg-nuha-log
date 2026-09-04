@@ -103,6 +103,7 @@ func (c *Client) Wrap(module string, h echo.HandlerFunc) echo.HandlerFunc {
 		ctx.Response().Writer = buf
 
 		reqCtx := activityctx.WithErrorBag(ctx.Request().Context())
+		reqCtx = attachTraceContext(reqCtx, ctx.Request().Header.Get(traceparentHeader))
 		ctx.SetRequest(ctx.Request().WithContext(reqCtx))
 		activityctx.Enter(reqCtx)
 		defer activityctx.Leave()
@@ -133,6 +134,7 @@ func (c *Client) Wrap(module string, h echo.HandlerFunc) echo.HandlerFunc {
 			actor = enrichActorFromResponse(actor, event.ResponseBody)
 		}
 		event.Actor = actor
+		applyTraceFields(&event, traceFieldsFromContext(reqCtx))
 
 		c.sendAsync(event)
 		return handlerErr

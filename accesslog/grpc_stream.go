@@ -116,6 +116,7 @@ func (c *Client) StreamServerInterceptor(module string) grpc.StreamServerInterce
 		}
 
 		streamCtx := activityctx.WithErrorBag(ss.Context())
+		streamCtx = attachTraceContext(streamCtx, incomingTraceparentFromGRPC(ss.Context()))
 		activityctx.Enter(streamCtx)
 		defer activityctx.Leave()
 
@@ -145,6 +146,7 @@ func (c *Client) StreamServerInterceptor(module string) grpc.StreamServerInterce
 			actor = enrichActorFromResponse(actor, event.ResponseBody)
 		}
 		event.Actor = actor
+		applyTraceFields(&event, traceFieldsFromContext(streamCtx))
 
 		c.sendAsync(event)
 		return err

@@ -24,6 +24,12 @@ Add this module to the target service via `go get`. Wire HTTP and/or gRPC interc
    go get github.com/aprp19/pkg-nuha-log@v0.1.0
    ```
 
+   For distributed trace correlation (v0.3.0+):
+
+   ```bash
+   go get github.com/aprp19/pkg-nuha-log@v0.3.0
+   ```
+
 2. Import in Go code:
 
    ```go
@@ -173,3 +179,114 @@ Producer services can use `go get github.com/aprp19/pkg-nuha-log@latest` after t
 Actor fields follow nuha-auth JWT claims (`userID`, `email`, `name`) and auth middleware context. UUID comes from response enrichment (`data.user.uid` or `.uuid`), not JWT.
 
 Override with `ClientConfig.ActorExtractor` for custom context keys.
+
+## Distributed trace correlation (v0.3.0+)
+
+Each HTTP/gRPC access log entry **is** one span. Logs that share the same `trace_id` form one distributed trace in hub-logs-service and fe-hub-logs.
+
+### Fields on every event
+
+| Field | Description |
+|-------|-------------|
+| `trace_id` | 32-char hex trace ID (shared across all hops) |
+| `span_id` | 16-char hex span ID for **this hop** |
+| `parent_span_id` | Caller's span ID from inbound W3C `traceparent` (empty on trace root) |
+
+### Automatic inbound capture
+
+HTTP wrapper and gRPC server interceptors read W3C `traceparent`:
+
+- HTTP header: `traceparent`
+- gRPC metadata key: `traceparent`
+
+Format: `00-{32-hex-trace-id}-{16-hex-span-id}-{2-hex-flags}`
+
+If no valid `traceparent` is present, a **new trace** is started for this hop (single-service trace).
+
+No handler changes required for inbound capture.
+
+### Gateway — HTTP entry + gRPC outbound
+
+Register server-side logging as usual. Add the pkg-nuha-log **client interceptor** on every downstream gRPC dial:
+
+```go
+import "github.com/aprp19/pkg-nuha-log/accesslog"
+
+conn, err := grpc.NewClient(
+    cfg.OrganizationService.GRPCAddress,
+    grpc.WithTransportCredentials(insecure.NewCredentials()),
+    grpc.WithChainUnaryInterceptor(
+        accesslog.UnaryClientInterceptor(),
+        grpcpkg.AuthClientInterceptor(), // your existing auth interceptor
+    ),
+)
+```
+
+Browser/API clients may send `traceparent`; the gateway reuses it or creates a new trace, then forwards **this hop's** span on outbound calls.
+
+### Middle service — gRPC server + client
+
+Any service that **calls another service** needs both server logging (inbound) and client propagation (outbound):
+
+```go
+grpcServer := grpc.NewServer(
+    grpc.ChainUnaryInterceptor(
+        middleware.GRPCAuthInterceptor(cfg),
+        logClient.UnaryServerInterceptor("organization"),
+    ),
+)
+
+downstreamConn, _ := grpc.NewClient(
+    cfg.DownstreamService.GRPCAddress,
+    grpc.WithTransportCredentials(insecure.NewCredentials()),
+    grpc.WithChainUnaryInterceptor(
+        accesslog.UnaryClientInterceptor(),
+        grpcpkg.AuthClientInterceptor(),
+    ),
+)
+```
+
+### Leaf service — server only
+
+Bump to v0.3.0+ and register the gRPC server interceptor (or HTTP wrapper). No client interceptor unless the service also calls others.
+
+### HTTP outbound (REST calls to other services)
+
+```go
+req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+accesslog.InjectHTTPOutgoing(req)
+```
+
+Uses trace context from the current request scope.
+
+### Multi-hop chain (gateway → service 1 → service 2)
+
+| Hop | Access log | Outbound |
+|-----|------------|----------|
+| Gateway | `trace_id=T`, `span_id=G`, `parent=""` | gRPC metadata `traceparent=00-T-G-01` |
+| Service 1 | `trace_id=T`, `span_id=S1`, `parent=G` | gRPC metadata `traceparent=00-T-S1-01` |
+| Service 2 | `trace_id=T`, `span_id=S2`, `parent=S1` | *(leaf — nothing)* |
+
+**Rule:** Every hop that calls another service must forward `traceparent`, not just the gateway.
+
+### Trace verification checklist
+
+- [ ] hub-ingestion + hub-consumer bumped to v0.3.0+ and deployed
+- [ ] Entry gateway has `UnaryClientInterceptor()` on all downstream gRPC dials
+- [ ] Middle services have client interceptor on outbound gRPC dials
+- [ ] Chained request produces N access logs with the same `trace_id`
+- [ ] `GET /logs?trace_id=<T>` returns all hops
+- [ ] `GET /traces/<T>` in hub-logs-service returns N spans with correct `parent_span_id` chain
+
+### Release checklist (v0.3.0)
+
+Follow the standard minor-release flow above. Additionally:
+
+1. Verify sample event with `trace_id`, `span_id`, `parent_span_id` → `POST /api/logs` → `202 Accepted`
+2. Verify hub-consumer persists trace fields to MongoDB (`trace_id`, `span_id`, `parent_span_id`)
+
+### Do NOT
+
+- Generate a new `trace_id` on internal hops when a valid inbound `traceparent` exists
+- Put trace propagation in business handlers — use gRPC client interceptors or `InjectHTTPOutgoing`
+- Expect DB/internal sub-spans — access-log correlation is one span per service hop (optional OTel later)

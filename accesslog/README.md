@@ -170,6 +170,9 @@ Override with `ClientConfig.SkipMethods`.
 | `response_body` | Sanitized JSON response on **success** (max 64KB) |
 | `actor` | User context from Echo + response enrichment |
 | `error` | Structured failure details on **error** responses (see below) |
+| `trace_id` | W3C trace ID (32 hex chars); shared across hops in a distributed trace (v0.3.0+) |
+| `span_id` | Span ID for this hop (16 hex chars) (v0.3.0+) |
+| `parent_span_id` | Parent span ID from inbound `traceparent` (empty on trace root) (v0.3.0+) |
 | `timestamp` | RFC3339 UTC |
 
 ### Error object (`error`)
@@ -385,6 +388,10 @@ router.GET("/path", client.Wrap("module-name", handler))
 // gRPC interceptors
 unaryInterceptor := client.UnaryServerInterceptor("organization")
 streamInterceptor := client.StreamServerInterceptor("organization")
+
+// Distributed trace propagation (v0.3.0+)
+traceClientInterceptor := accesslog.UnaryClientInterceptor() // attach on outbound gRPC dials
+accesslog.InjectHTTPOutgoing(req)                          // attach on outbound HTTP requests
 ```
 
 ## Related

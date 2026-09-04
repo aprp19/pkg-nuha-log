@@ -44,6 +44,9 @@ type AccessLogEvent struct {
 	ResponseBody  interface{}     `json:"response_body,omitempty"`
 	Actor         Actor           `json:"actor,omitempty"`
 	Error         *AccessLogError `json:"error,omitempty"`
+	TraceID       string          `json:"trace_id,omitempty" bson:"trace_id,omitempty"`
+	SpanID        string          `json:"span_id,omitempty" bson:"span_id,omitempty"`
+	ParentSpanID  string          `json:"parent_span_id,omitempty" bson:"parent_span_id,omitempty"`
 	Timestamp     string                 `json:"timestamp"`
 }
 
