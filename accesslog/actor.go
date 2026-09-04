@@ -19,17 +19,12 @@ var (
 func buildRequestParams(c echo.Context) map[string]interface{} {
 	params := make(map[string]interface{})
 
-	query := c.QueryParams()
-	if len(query) > 0 {
-		queryMap := make(map[string]interface{}, len(query))
-		for key, values := range query {
-			if len(values) == 1 {
-				queryMap[key] = values[0]
-			} else {
-				queryMap[key] = values
-			}
-		}
-		params["query"] = sanitizeObject(queryMap)
+	if query := queryParamsFromContext(c); len(query) > 0 {
+		params["query"] = sanitizeObject(query)
+	}
+
+	if pathParams := pathParamsFromContext(c); len(pathParams) > 0 {
+		params["path_params"] = sanitizeObject(pathParams)
 	}
 
 	if body := requestBodyFromContext(c); len(body) > 0 {
@@ -37,6 +32,41 @@ func buildRequestParams(c echo.Context) map[string]interface{} {
 	}
 
 	return params
+}
+
+func queryParamsFromContext(c echo.Context) map[string]interface{} {
+	query := c.QueryParams()
+	if len(query) == 0 {
+		return nil
+	}
+
+	queryMap := make(map[string]interface{}, len(query))
+	for key, values := range query {
+		if len(values) == 1 {
+			queryMap[key] = values[0]
+		} else {
+			queryMap[key] = values
+		}
+	}
+	return queryMap
+}
+
+func pathParamsFromContext(c echo.Context) map[string]interface{} {
+	names := c.ParamNames()
+	if len(names) == 0 {
+		return nil
+	}
+
+	pathParams := make(map[string]interface{}, len(names))
+	for _, name := range names {
+		if value := c.Param(name); value != "" {
+			pathParams[name] = value
+		}
+	}
+	if len(pathParams) == 0 {
+		return nil
+	}
+	return pathParams
 }
 
 func captureActorFromRequest(c echo.Context) Actor {

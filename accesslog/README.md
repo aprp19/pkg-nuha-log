@@ -166,7 +166,7 @@ Override with `ClientConfig.SkipMethods`.
 | `status_code` | Response status |
 | `duration_us` | Handler wall-clock time when under 1ms (microseconds) |
 | `duration_ms` | Handler wall-clock time when 1ms or longer (milliseconds) |
-| `request_params` | Sanitized query + body |
+| `request_params` | Sanitized query string, path params, and body |
 | `response_body` | Sanitized JSON response (max 64KB) |
 | `actor` | User context from Echo + response enrichment |
 | `error_message` | Set when handler returns an error |
@@ -232,7 +232,12 @@ On success, actor fields can be enriched from the response shape:
   "status_code": 200,
   "duration_ms": 38,
   "request_params": {
-    "query": {}
+    "query": {
+      "page": "1"
+    },
+    "path_params": {
+      "id": "42"
+    }
   },
   "response_body": {
     "success": true,
