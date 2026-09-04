@@ -161,13 +161,6 @@ func firstMetadata(md metadata.MD, key string) string {
 	return values[0]
 }
 
-func grpcErrorMessage(err error) string {
-	if err == nil {
-		return ""
-	}
-	return status.Convert(err).Message()
-}
-
 func grpcStatusCode(err error) int {
 	if err == nil {
 		return grpcCodeToHTTPStatus(codes.OK)

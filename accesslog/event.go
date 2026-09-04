@@ -18,6 +18,14 @@ type Actor struct {
 	TenantHubID  *string `json:"tenant_hub_id,omitempty"`
 }
 
+// AccessLogError holds structured failure details for an activity log event.
+type AccessLogError struct {
+	Message  string                 `json:"message,omitempty"`
+	Cause    string                 `json:"cause,omitempty"`
+	Context  map[string]interface{} `json:"context,omitempty"`
+	Response interface{}            `json:"response,omitempty"`
+}
+
 // AccessLogEvent is the shared contract between producer services, the ingestion API,
 // Redpanda messages, and downstream consumers.
 type AccessLogEvent struct {
@@ -33,9 +41,9 @@ type AccessLogEvent struct {
 	DurationMs    *int64                 `json:"duration_ms,omitempty"`
 	DurationUs    *int64                 `json:"duration_us,omitempty"`
 	RequestParams map[string]interface{} `json:"request_params,omitempty"`
-	ResponseBody  interface{}            `json:"response_body,omitempty"`
-	Actor         Actor                  `json:"actor,omitempty"`
-	ErrorMessage  string                 `json:"error_message,omitempty"`
+	ResponseBody  interface{}     `json:"response_body,omitempty"`
+	Actor         Actor           `json:"actor,omitempty"`
+	Error         *AccessLogError `json:"error,omitempty"`
 	Timestamp     string                 `json:"timestamp"`
 }
 

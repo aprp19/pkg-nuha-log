@@ -374,15 +374,3 @@ func statusCodeFromContext(c echo.Context, err error) int {
 	}
 	return http.StatusInternalServerError
 }
-
-func errorMessage(err error) string {
-	if err == nil {
-		return ""
-	}
-	if he, ok := err.(*echo.HTTPError); ok {
-		if msg, ok := he.Message.(string); ok {
-			return msg
-		}
-	}
-	return err.Error()
-}

@@ -109,6 +109,26 @@ Events POST to `{HUB_INGESTION_URL}/api/logs` as JSON (`AccessLogEvent`). See [a
 
 Sensitive keys redacted: `password`, `token`, `access_token`, `refresh_token`, `authorization`, `access_code`, `document_token`.
 
+## Structured error capture
+
+Failed requests emit a nested `error` object with `message`, `cause`, `context`, and `response` instead of flat `error_message`. Success responses still use top-level `response_body`.
+
+Zerolog `.Msg()` / `.Str()` are not auto-captured. In handlers:
+
+```go
+accesslog.LogError(c, err, "merge document file fetch failed",
+    "nik_pegawai", request.NIK,
+    "document_path", path,
+)
+return err
+```
+
+When Echo's global HTTPErrorHandler formats 500 JSON outside the wrapper, call `accesslog.SetErrorResponse(c, payload)` from the error handler.
+
+gRPC: use `SetErrorMessageContext` / `SetErrorContextContext` on the request context.
+
+**Migration from v0.1.x:** `error_message` → `error.cause` / `error.message`; error JSON → `error.response`.
+
 ## Do NOT
 
 - Talk to Redpanda directly from producer services

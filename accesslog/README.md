@@ -167,10 +167,67 @@ Override with `ClientConfig.SkipMethods`.
 | `duration_us` | Handler wall-clock time when under 1ms (microseconds) |
 | `duration_ms` | Handler wall-clock time when 1ms or longer (milliseconds) |
 | `request_params` | Sanitized query string, path params, and body |
-| `response_body` | Sanitized JSON response (max 64KB) |
+| `response_body` | Sanitized JSON response on **success** (max 64KB) |
 | `actor` | User context from Echo + response enrichment |
-| `error_message` | Set when handler returns an error |
+| `error` | Structured failure details on **error** responses (see below) |
 | `timestamp` | RFC3339 UTC |
+
+### Error object (`error`)
+
+On failed requests (`status_code >= 400` or handler returned an error), the event includes a nested `error` object instead of top-level `response_body`:
+
+| Field | Source |
+|-------|--------|
+| `message` | Human-readable failure reason (handler opt-in via `SetErrorMessage` / `LogError`) |
+| `cause` | Underlying returned error (`err.Error()` or gRPC status message) |
+| `context` | Structured fields from handler opt-in (`SetErrorContext` / `LogError` Str pairs) |
+| `response` | JSON error payload sent to the client (buffered body, `SetErrorResponse`, or `echo.HTTPError` map message) |
+
+Zerolog `.Msg()` and `.Str()` are **not** auto-captured. Use `LogError` or the explicit setters so the access log matches your terminal output.
+
+**Recommended handler pattern:**
+
+```go
+accesslog.LogError(c, err, "merge document file fetch failed",
+    "nik_pegawai", request.NIK,
+    "document_path", path,
+)
+return err
+```
+
+**When Echo's global HTTPErrorHandler writes the JSON after the wrapper** (common on 500):
+
+```go
+accesslog.SetErrorResponse(c, map[string]interface{}{
+    "success": false,
+    "message": "Internal Server Error",
+    "meta":    meta,
+})
+```
+
+**Example error event:**
+
+```json
+{
+  "status_code": 500,
+  "error": {
+    "message": "merge document file fetch failed",
+    "cause": "failed to stat file: The specified key does not exist.",
+    "context": {
+      "document_path": "/asset/file/doc.pdf",
+      "nik_pegawai": "P-2024-01"
+    },
+    "response": {
+      "success": false,
+      "message": "Internal Server Error",
+      "meta": {
+        "status": 500,
+        "service": "gateway-service"
+      }
+    }
+  }
+}
+```
 
 ### Sensitive data redaction
 
@@ -292,10 +349,22 @@ protected.GET("/users/:id", wrap(ctrl.GetByID))  // wrap at route level
 | `failed to send activity log` | Network error or hub-ingestion-service down — check service logs |
 | Missing request body | Body must be readable; client caches body before handler runs |
 | Missing actor fields | Auth middleware must set Echo context keys before handler |
+| Missing error message in access log | Zerolog `.Msg()` is not auto-captured — use `LogError` or `SetErrorMessage` |
+| Missing 500 response JSON in access log | Echo HTTPErrorHandler may run after wrapper — use `SetErrorResponse` or write JSON before returning |
 
 ## API reference
 
 ```go
+// Error capture (HTTP)
+accesslog.LogError(c, err, "human message", "key", "value") // logs + sets access log error
+accesslog.SetErrorMessage(c, "human message")
+accesslog.SetErrorContext(c, "nik_pegawai", request.NIK)
+accesslog.SetErrorResponse(c, errorPayload) // when global error handler writes outside wrapper
+
+// Error capture (gRPC)
+ctx = accesslog.SetErrorMessageContext(ctx, "human message")
+ctx = accesslog.SetErrorContextContext(ctx, "key", "value")
+```
 // Create client
 client := accesslog.NewClient(accesslog.ClientConfig{
     IngestionURL:     string  // required

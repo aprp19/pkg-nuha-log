@@ -103,6 +103,9 @@ func (c *Client) Wrap(module string, h echo.HandlerFunc) echo.HandlerFunc {
 
 		handlerErr := h(ctx)
 
+		statusCode := statusCodeFromContext(ctx, handlerErr)
+		responseBody := buf.Body(c.maxResponseBytes)
+
 		event := AccessLogEvent{
 			Service:       c.serviceName,
 			Module:        module,
@@ -111,10 +114,10 @@ func (c *Client) Wrap(module string, h echo.HandlerFunc) echo.HandlerFunc {
 			Path:          ctx.Request().URL.Path,
 			Route:         ctx.Path(),
 			Transport:     TransportHTTP,
-			StatusCode:    statusCodeFromContext(ctx, handlerErr),
+			StatusCode:    statusCode,
 			RequestParams: buildRequestParams(ctx),
-			ResponseBody:  buf.Body(c.maxResponseBytes),
-			ErrorMessage:  errorMessage(handlerErr),
+			ResponseBody:  responseBodyIfSuccess(handlerErr, statusCode, responseBody),
+			Error:         buildError(ctx, handlerErr, responseBody, statusCode),
 			Timestamp:     time.Now().UTC().Format(time.RFC3339),
 		}
 		setDurationFromStart(&event, start)

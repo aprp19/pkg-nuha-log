@@ -27,6 +27,9 @@ func (c *Client) UnaryServerInterceptor(module string) grpc.UnaryServerIntercept
 			requestCode = extractRequestCode(req)
 		}
 
+		statusCode := grpcStatusCode(err)
+		responseBody := protoToSanitizedValue(resp, c.maxResponseBytes)
+
 		event := AccessLogEvent{
 			Service:       c.serviceName,
 			Module:        module,
@@ -36,10 +39,10 @@ func (c *Client) UnaryServerInterceptor(module string) grpc.UnaryServerIntercept
 			Route:         info.FullMethod,
 			Transport:     TransportGRPC,
 			RequestCode:   requestCode,
-			StatusCode:    grpcStatusCode(err),
+			StatusCode:    statusCode,
 			RequestParams: buildGRPCRequestParams(ctx, req, c.maxResponseBytes),
-			ResponseBody:  protoToSanitizedValue(resp, c.maxResponseBytes),
-			ErrorMessage:  grpcErrorMessage(err),
+			ResponseBody:  responseBodyIfSuccess(err, statusCode, responseBody),
+			Error:         buildErrorFromGRPCContext(ctx, err, responseBody, statusCode),
 			Timestamp:     time.Now().UTC().Format(time.RFC3339),
 		}
 		setDurationFromStart(&event, start)

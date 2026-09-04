@@ -116,6 +116,9 @@ func (c *Client) StreamServerInterceptor(module string) grpc.StreamServerInterce
 
 		err := handler(srv, wrapped)
 
+		statusCode := grpcStatusCode(err)
+		responseBody := protoToSanitizedValue(capture.response, c.maxResponseBytes)
+
 		event := AccessLogEvent{
 			Service:       c.serviceName,
 			Module:        module,
@@ -124,10 +127,10 @@ func (c *Client) StreamServerInterceptor(module string) grpc.StreamServerInterce
 			Path:          info.FullMethod,
 			Route:         info.FullMethod,
 			Transport:     TransportGRPC,
-			StatusCode:    grpcStatusCode(err),
+			StatusCode:    statusCode,
 			RequestParams: buildStreamRequestParams(capture, c.maxResponseBytes),
-			ResponseBody:  protoToSanitizedValue(capture.response, c.maxResponseBytes),
-			ErrorMessage:  grpcErrorMessage(err),
+			ResponseBody:  responseBodyIfSuccess(err, statusCode, responseBody),
+			Error:         buildErrorFromGRPCContext(ss.Context(), err, responseBody, statusCode),
 			Timestamp:     time.Now().UTC().Format(time.RFC3339),
 		}
 		setDurationFromStart(&event, start)
