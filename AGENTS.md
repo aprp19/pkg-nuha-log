@@ -129,6 +129,25 @@ gRPC: use `SetErrorMessageContext` / `SetErrorContextContext` on the request con
 
 **Migration from v0.1.x:** `error_message` → `error.cause` / `error.message`; error JSON → `error.response`.
 
+## Release checklist
+
+On every **major** release (changes to `AccessLogEvent` / `AccessLogError` in `accesslog/event.go`, or semver minor/major bump):
+
+1. Tag and push pkg-nuha-log (e.g. `v0.2.0`)
+2. **Always bump hub-ingestion-service** — it imports `AccessLogEvent` directly; an older version silently drops new JSON fields at bind time
+   ```bash
+   cd hub-ingestion-service
+   go get github.com/aprp19/pkg-nuha-log@vX.Y.Z
+   go mod tidy && go build ./...
+   ```
+3. Update hub-ingestion-service README, AGENTS.md, and setup scripts to match the new contract
+4. Deploy hub-ingestion-service **before or with** producer service upgrades
+5. Verify `POST /api/logs` accepts a sample event with new fields → `202 Accepted`
+
+Patch releases that only fix producer-side behavior (no JSON shape change) may skip the hub-ingestion-service bump.
+
+Producer services can use `go get github.com/aprp19/pkg-nuha-log@latest` after tagging.
+
 ## Do NOT
 
 - Talk to Redpanda directly from producer services
