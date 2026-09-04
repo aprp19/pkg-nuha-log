@@ -1,4 +1,4 @@
-module 10.100.2.133/nuha-hub/pkg-nuha-log
+module github.com/aprp19/pkg-nuha-log
 
 go 1.25.0
 

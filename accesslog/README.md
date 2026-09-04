@@ -7,12 +7,11 @@ Client library for capturing controller-level **activity logs** and sending them
 ## Installation
 
 ```bash
-go env -w GOPRIVATE=10.100.2.133
-go get 10.100.2.133/nuha-hub/pkg-nuha-log@v0.1.0
+go get github.com/aprp19/pkg-nuha-log@v0.1.0
 ```
 
 ```go
-import "10.100.2.133/nuha-hub/pkg-nuha-log/accesslog"
+import "github.com/aprp19/pkg-nuha-log/accesslog"
 ```
 
 ## How it works
@@ -57,7 +56,7 @@ package main
 
 import (
     "os"
-    "10.100.2.133/nuha-hub/pkg-nuha-log/accesslog"
+    "github.com/aprp19/pkg-nuha-log/accesslog"
 )
 
 var accessLog *accesslog.Client
@@ -81,7 +80,7 @@ package routes
 
 import (
     "your-service/internal/app/user/controller"
-    "10.100.2.133/nuha-hub/pkg-nuha-log/accesslog"
+    "github.com/aprp19/pkg-nuha-log/accesslog"
     "github.com/labstack/echo/v4"
 )
 

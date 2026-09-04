@@ -5,7 +5,7 @@ import (
 	"context"
 	"net/http"
 
-	"10.100.2.133/nuha-hub/pkg-nuha-log/logger"
+	"github.com/aprp19/pkg-nuha-log/logger"
 )
 
 func (c *Client) sendAsync(event AccessLogEvent) {

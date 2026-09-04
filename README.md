@@ -6,27 +6,14 @@ Shared Go module for **activity logging** in Nuha Hub / CRM services. Captures H
 
 ## Install
 
-This module is hosted on private GitLab. Configure Go once per machine:
-
-```bash
-go env -w GOPRIVATE=10.100.2.133
-go env -w GONOSUMDB=10.100.2.133
-```
-
-If authentication is required:
-
-```bash
-git config --global url."http://<user>:<token>@10.100.2.133/".insteadOf "http://10.100.2.133/"
-```
-
 In your service:
 
 ```bash
-go get 10.100.2.133/nuha-hub/pkg-nuha-log@v0.1.0
+go get github.com/aprp19/pkg-nuha-log@v0.1.0
 ```
 
 ```go
-import "10.100.2.133/nuha-hub/pkg-nuha-log/accesslog"
+import "github.com/aprp19/pkg-nuha-log/accesslog"
 ```
 
 ## Quick start
@@ -63,7 +50,7 @@ grpc.ChainUnaryInterceptor(
 When this repo is updated, tag a release and pull in consuming services:
 
 ```bash
-go get 10.100.2.133/nuha-hub/pkg-nuha-log@v0.1.1
+go get github.com/aprp19/pkg-nuha-log@v0.1.1
 ```
 
 ## Repository layout
@@ -77,6 +64,6 @@ logger/      Internal zerolog wrapper (used by accesslog)
 
 - **[AGENTS.md](AGENTS.md)** — integration playbook for hub/CRM services
 - **hub-ingestion-service** — ingestion gateway → Redpanda
-- Remote: `http://10.100.2.133/nuha-hub/pkg-nuha-log.git`
+- Remote: `https://github.com/aprp19/pkg-nuha-log.git`
 
 See [accesslog/README.md](accesslog/README.md) for the full human reference (config, actor fields, troubleshooting).

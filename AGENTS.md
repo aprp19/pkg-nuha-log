@@ -14,30 +14,23 @@ Add this module to the target service via `go get`. Wire HTTP and/or gRPC interc
 - hub-ingestion-service running and reachable
 - Env vars: `HUB_INGESTION_URL`, optional `INGEST_API_KEY`
 - Target service has Echo (HTTP) and/or gRPC server
-- Git access to `http://10.100.2.133/nuha-hub/pkg-nuha-log.git`
+- Git access to `https://github.com/aprp19/pkg-nuha-log.git`
 
 ## Install checklist
 
-1. Configure private module access (once per machine):
+1. Add the module to the target service:
 
    ```bash
-   go env -w GOPRIVATE=10.100.2.133
-   go env -w GONOSUMDB=10.100.2.133
+   go get github.com/aprp19/pkg-nuha-log@v0.1.0
    ```
 
-2. Add the module to the target service:
-
-   ```bash
-   go get 10.100.2.133/nuha-hub/pkg-nuha-log@v0.1.0
-   ```
-
-3. Import in Go code:
+2. Import in Go code:
 
    ```go
-   import "10.100.2.133/nuha-hub/pkg-nuha-log/accesslog"
+   import "github.com/aprp19/pkg-nuha-log/accesslog"
    ```
 
-4. Run `go mod tidy && go build ./...`
+3. Run `go mod tidy && go build ./...`
 
 ## HTTP integration (Echo)
 
